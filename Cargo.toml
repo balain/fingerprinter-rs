@@ -1,0 +1,9 @@
+[package]
+name = "fingerprinter-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jwalk = "0.8.1"
+rayon = "1.10.0"
+walkdir = "2.5.0"
