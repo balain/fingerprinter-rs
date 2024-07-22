@@ -12,6 +12,7 @@ use std::fs::*;
 use std::io;
 use sha2::{Sha256, Digest};
 use clap::Parser;
+use rayon::prelude::*; // for parallel iter
 
 /// Simple path processor
 #[derive(Parser, Debug)]
@@ -61,15 +62,19 @@ fn main() {
     let path = Path::new(pathname.as_str());
     let mut files = Vec::new();
     visit(path, &mut |e| files.push(e), exclude).unwrap();
-    // TODO: Add Rayon to the iterator loop
-    for f in files {
+    // Added Rayon to the iterator loop
+    files.par_iter().for_each(|f| { // Multi-threaded (uses Rayon)
+    // Uncomment the next line if you don't want to use Rayon/multiple threads
+    // files.iter().for_each(|f| {            // Single-threaded
         // https://github.com/RustCrypto/hashes/tree/master/sha2
+
+        // TODO: Try to speed up calculating hashes of large files
         let mut file = File::open(f.clone()).unwrap();
         let mut hasher = Sha256::new();
         let _n = io::copy(&mut file, &mut hasher);
         let hash = hasher.finalize();
         println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
-    }
+    });
 
     let dur: Duration = start.elapsed();  // End timer
     eprintln!("Time elapsed: {:?}", dur); // Show elapsed time to STDERR
