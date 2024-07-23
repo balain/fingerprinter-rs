@@ -15,7 +15,6 @@ use sha2::{Sha256, Digest, Sha256VarCore};
 use clap::Parser;
 use rayon::prelude::*;
 use sha2::digest::Output;
-// for parallel iter
 
 /// Simple path processor
 #[derive(Parser, Debug)]
@@ -24,6 +23,12 @@ struct Args {
     /// Path to process
     #[arg(short, long)]
     pathname: String,
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct FileRecord {
+    filename: String,
+    filehash: Output<Sha256VarCore>
 }
 
 // Originally based on https://stackoverflow.com/questions/63542762
@@ -57,7 +62,8 @@ fn main() {
     let args = Args::parse();
     let pathname:String = args.pathname;
 
-    let filelist = Arc::new(Mutex::new(Vec::<(&str, Output<Sha256VarCore>)>::new()));
+    // let filelist = Arc::new(Mutex::new(Vec::<(&str, Output<Sha256VarCore>)>::new()));
+    let filelist = Arc::new(Mutex::new(Vec::<FileRecord>::new()));
 
     // List of paths (full string) to exclude
     // If any one of these items is found in the full path, that entry will be ignored/excluded
@@ -74,7 +80,6 @@ fn main() {
 
         // TODO: Try to speed up calculating hashes of large files
         let f2 = File::open(f.clone());
-        let f3 = <PathBuf as AsRef<Path>>::as_ref(f).to_str().unwrap_or_default();  //.and_then(|name| name.file_name()).and_then(|name| name.to_str()).unwrap_or("default");
 
         let res:Result<(&str, Output<Sha256VarCore>),bool> = match f2 {
             Ok(f2) => {
@@ -82,7 +87,7 @@ fn main() {
                 let _n = io::copy(&mut &f2, &mut hasher);
                 let hash = hasher.finalize();
                 //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
-                Result::Ok((f3,hash))
+                Result::Ok((<PathBuf as AsRef<Path>>::as_ref(f).to_str().unwrap_or_default(),hash))
             },
             Err(ref e) => {
                 eprintln!("Error: (file: {:?}) {:?}", f, e);
@@ -90,16 +95,18 @@ fn main() {
             }
         };
         if res.is_ok() {
-            filelist.lock().unwrap().push(res.unwrap());
+            // Create a new struct instance and populate with filename and filehash
+            let frs = FileRecord { filename: res.unwrap().0.to_owned(), filehash: res.unwrap().1 };
+            filelist.lock().unwrap().push(frs);
         }
     });
 
-    // Now sort and print filelist
+    // Now sort and print vector (filelist)
     // TODO: Avoid creating a new variable to hold the list
-    let mut fl2 = filelist.lock().unwrap().to_vec();
-    fl2.sort();
-    for i2 in fl2.iter() {
-        println!("{:?} == {:x}", i2.0, i2.1);
+    let mut fls2 = filelist.lock().unwrap().to_vec();
+    fls2.sort(); // It just works!
+    for i2 in fls2.iter() {
+        println!("{:?} == {:x}", i2.filename, i2.filehash);
     }
 
     let dur: Duration = start.elapsed();  // End timer
