@@ -10,3 +10,11 @@ jwalk = "0.8.1"
 rayon = "1.10.0"
 sha2 = "0.10.8"
 walkdir = "2.5.0"
+
+# https://stackoverflow.com/a/54842093
+[profile.release]
+opt-level = 'z' # Optimize for size.
+lto = true
+codegen-units=1
+panic = 'abort'
+strip = true # Strip symbols from binary

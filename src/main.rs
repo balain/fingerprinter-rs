@@ -10,10 +10,12 @@ use std::time::{Duration, Instant};
 use std::path::{Path, PathBuf};
 use std::fs::*;
 use std::io;
-
-use sha2::{Sha256, Digest};
+use std::sync::{Arc, Mutex};
+use sha2::{Sha256, Digest, Sha256VarCore};
 use clap::Parser;
-use rayon::prelude::*; // for parallel iter
+use rayon::prelude::*;
+use sha2::digest::Output;
+// for parallel iter
 
 /// Simple path processor
 #[derive(Parser, Debug)]
@@ -55,6 +57,8 @@ fn main() {
     let args = Args::parse();
     let pathname:String = args.pathname;
 
+    let filelist = Arc::new(Mutex::new(Vec::<(&str, Output<Sha256VarCore>)>::new()));
+
     // List of paths (full string) to exclude
     // If any one of these items is found in the full path, that entry will be ignored/excluded
     let exclude = vec![".idea", "target", ".git", "node_modules", "lib"];
@@ -70,20 +74,33 @@ fn main() {
 
         // TODO: Try to speed up calculating hashes of large files
         let f2 = File::open(f.clone());
-        let _res:Result<bool,bool> = match f2 {
+        let f3 = <PathBuf as AsRef<Path>>::as_ref(f).to_str().unwrap_or_default();  //.and_then(|name| name.file_name()).and_then(|name| name.to_str()).unwrap_or("default");
+
+        let res:Result<(&str, Output<Sha256VarCore>),bool> = match f2 {
             Ok(f2) => {
                 let mut hasher = Sha256::new();
                 let _n = io::copy(&mut &f2, &mut hasher);
                 let hash = hasher.finalize();
-                println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
-                Result::Ok(true)
+                //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
+                Result::Ok((f3,hash))
             },
-            Err( ref e) => {
+            Err(ref e) => {
                 eprintln!("Error: (file: {:?}) {:?}", f, e);
                 Result::Err(false)
             }
         };
+        if res.is_ok() {
+            filelist.lock().unwrap().push(res.unwrap());
+        }
     });
+
+    // Now sort and print filelist
+    // TODO: Avoid creating a new variable to hold the list
+    let mut fl2 = filelist.lock().unwrap().to_vec();
+    fl2.sort();
+    for i2 in fl2.iter() {
+        println!("{:?} == {:x}", i2.0, i2.1);
+    }
 
     let dur: Duration = start.elapsed();  // End timer
     eprintln!("Time elapsed: {:?}", dur); // Show elapsed time to STDERR
