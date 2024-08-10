@@ -71,13 +71,16 @@ Time elapsed: 1.931917ms
 ## Features
 
 ### Implemented
-- [x] Initial multithreaded scan (using rayon)
+- [x] Calculate md5sums for files/folders recursively
+- [x] Multithreaded scan (using rayon)
 
 ### Future
 - [ ] Implement JSON output
 - [ ] Improve command line option handling with new options (clap) [following python project options (see below)]
 - [ ] Implement watch mode
 - [ ] Implement alternative (optional) sqlite storage
+- [ ] Cross-compile
+- [ ] Optimize performance
 
 ## Other Similar or Related Projects
 
