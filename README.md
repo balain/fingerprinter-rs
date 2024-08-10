@@ -1,6 +1,6 @@
 # Fingerprinter (Rust)
 
-Take fingerprints (md5) of files in specified folder, recursively.
+Take fingerprints (sha256) of files in specified folder, recursively.
 
 ## Quick Start
 
@@ -87,7 +87,7 @@ Time elapsed: 34.518055958s
 ## Features
 
 ### Implemented
-- [x] Calculate md5sums for files/folders recursively
+- [x] Calculate sha256 checksums for files/folders recursively
 - [x] Multithreaded scan (using rayon)
 
 ### Future
@@ -101,5 +101,5 @@ Optionally:
 
 ## Other Similar or Related Projects
 
-- [fingerprinter-py](https://github.com/balain/fingerprinter-py): Python port (more features but much (!) slower).
+- [fingerprinter-py](https://github.com/balain/fingerprinter-py): Python port (uses md5; more features but much (!) slower).
 - [fingerprinter](https://github.com/balain/fingerprinter): Original Typescript version. No longer maintained.
