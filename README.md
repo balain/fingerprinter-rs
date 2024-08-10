@@ -2,13 +2,9 @@
 
 Take fingerprints (md5) of files in specified folder, recursively.
 
-Optionally:
-- Compare with previous snapshots and report on any changes (i.e. added, changed, or deleted files).
-- Run a continuous watch, cycling every 600sec (configurable).
-
 ## Quick Start
 
-Clone the repo and run the file using all defaults. The current folder will be scanned and the output (json) file (`output.json`) will be saved in the `.fingerprint-data` folder:
+Clone the repo, build the binary, and run it using all defaults. The current folder will be scanned and the output report will be shown on screen:
 
 ```bash
 $ git clone https://github.com/balain/fingerprinter-rs.git
@@ -33,8 +29,6 @@ $ git clone https://github.com/balain/fingerprinter-rs.git
 ```
 
 ## Options
-
-Using argparse
 
 ```bash
   --pathname PATH   Path to scan (required; no default)
@@ -68,6 +62,28 @@ $ cargo run -- --pathname .
 Time elapsed: 1.931917ms
 ```
 
+### Sample Runtime (on Apple Studio M1)
+
+Run against ~14.4k files in just over 3sec (~4.8k files per second).
+
+```bash
+❯ cargo run --release -- --pathname ..|wc -l
+    Finished `release` profile [optimized] target(s) in 0.03s
+     Running `target/release/fingerprinter-rs --pathname ..`
+Time elapsed: 3.102094667s
+   14402
+```
+
+Run against ~344k files in about 34.5sec (~10k files per second).
+
+```bash
+❯ cargo run --release -- --pathname ../..|wc -l
+    Finished `release` profile [optimized] target(s) in 0.03s
+     Running `target/release/fingerprinter-rs --pathname ../..`
+Time elapsed: 34.518055958s
+  343715
+```
+
 ## Features
 
 ### Implemented
@@ -75,14 +91,15 @@ Time elapsed: 1.931917ms
 - [x] Multithreaded scan (using rayon)
 
 ### Future
+Optionally:
 - [ ] Implement JSON output
+- [ ] Compare with previous snapshots and report on any changes (i.e. added, changed, or deleted files).
+- [ ] Run a continuous watch, cycling every 600sec (configurable)
 - [ ] Improve command line option handling with new options (clap) [following python project options (see below)]
-- [ ] Implement watch mode
 - [ ] Implement alternative (optional) sqlite storage
-- [ ] Cross-compile
 - [ ] Optimize performance
 
 ## Other Similar or Related Projects
 
-- [fingerprinter-py](https://github.com/balain/fingerprinter-py): Python port (more features but much slower).
+- [fingerprinter-py](https://github.com/balain/fingerprinter-py): Python port (more features but much (!) slower).
 - [fingerprinter](https://github.com/balain/fingerprinter): Original Typescript version. No longer maintained.
