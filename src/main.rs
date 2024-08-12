@@ -6,15 +6,15 @@
  * Originally based on code from: https://stackoverflow.com/a/63543625
  */
 
-use std::time::{Duration, Instant};
-use std::path::{Path, PathBuf};
-use std::fs::*;
-use std::io;
-use std::sync::{Arc, Mutex};
-use sha2::{Sha256, Digest, Sha256VarCore};
 use clap::Parser;
 use rayon::prelude::*;
 use sha2::digest::Output;
+use sha2::{Digest, Sha256, Sha256VarCore};
+use std::fs::*;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// Simple path processor
 #[derive(Parser, Debug)]
@@ -28,13 +28,13 @@ struct Args {
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct FileRecord {
     filename: String,
-    filehash: Output<Sha256VarCore>
+    filehash: Output<Sha256VarCore>,
 }
 
 // Originally based on https://stackoverflow.com/questions/63542762
 // The Cookbook has some good suggestions: https://rust-lang-nursery.github.io/rust-cookbook/file/dir.html
 // Tried jwalk but had issues with borrowing, so went back to a simpler implementation
-fn visit(path: &Path, cb: &mut dyn FnMut(PathBuf), exclude:Vec<&str>) -> io::Result<()> {
+fn visit(path: &Path, cb: &mut dyn FnMut(PathBuf), exclude: Vec<&str>) -> io::Result<()> {
     for e in read_dir(path)? {
         let e = e?;
         let path = e.path();
@@ -43,7 +43,10 @@ fn visit(path: &Path, cb: &mut dyn FnMut(PathBuf), exclude:Vec<&str>) -> io::Res
         let components: Vec<_> = path.components().map(|comp| comp.as_os_str()).collect();
         // Only include files that don't have a component in the exclude vector
         // logic from: https://stackoverflow.com/a/29504547
-        let match_count= components.iter().filter(|&x| exclude.contains(&x.to_str().unwrap())).count();
+        let match_count = components
+            .iter()
+            .filter(|&x| exclude.contains(&x.to_str().unwrap()))
+            .count();
         if match_count == 0 {
             if path.is_dir() {
                 visit(&path, cb, exclude.clone())?;
@@ -60,7 +63,7 @@ fn main() {
 
     // Parse cli arguments
     let args = Args::parse();
-    let pathname:String = args.pathname;
+    let pathname: String = args.pathname;
 
     // let filelist = Arc::new(Mutex::new(Vec::<(&str, Output<Sha256VarCore>)>::new()));
     let filelist = Arc::new(Mutex::new(Vec::<FileRecord>::new()));
@@ -73,7 +76,8 @@ fn main() {
     let mut files = Vec::new();
     visit(path, &mut |e| files.push(e), exclude).unwrap();
     // Added Rayon to the iterator loop
-    files.par_iter().for_each(|f| { // Multi-threaded (uses Rayon)
+    files.par_iter().for_each(|f| {
+        // Multi-threaded (uses Rayon)
         // Uncomment the next line if you don't want to use Rayon/multiple threads
         // files.iter().for_each(|f| {            // Single-threaded
         // https://github.com/RustCrypto/hashes/tree/master/sha2
@@ -81,14 +85,19 @@ fn main() {
         // TODO: Try to speed up calculating hashes of large files
         let f2 = File::open(f.clone());
 
-        let res:Result<(&str, Output<Sha256VarCore>),bool> = match f2 {
+        let res: Result<(&str, Output<Sha256VarCore>), bool> = match f2 {
             Ok(f2) => {
                 let mut hasher = Sha256::new();
                 let _n = io::copy(&mut &f2, &mut hasher);
                 let hash = hasher.finalize();
                 //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
-                Result::Ok((<PathBuf as AsRef<Path>>::as_ref(f).to_str().unwrap_or_default(),hash))
-            },
+                Result::Ok((
+                    <PathBuf as AsRef<Path>>::as_ref(f)
+                        .to_str()
+                        .unwrap_or_default(),
+                    hash,
+                ))
+            }
             Err(ref e) => {
                 eprintln!("Error: (file: {:?}) {:?}", f, e);
                 Result::Err(false)
@@ -96,7 +105,10 @@ fn main() {
         };
         if res.is_ok() {
             // Create a new struct instance and populate with filename and filehash
-            let frs = FileRecord { filename: res.unwrap().0.to_owned(), filehash: res.unwrap().1 };
+            let frs = FileRecord {
+                filename: res.unwrap().0.to_owned(),
+                filehash: res.unwrap().1,
+            };
             filelist.lock().unwrap().push(frs);
         }
     });
@@ -109,6 +121,6 @@ fn main() {
         println!("{:?} == {:x}", i2.filename, i2.filehash);
     }
 
-    let dur: Duration = start.elapsed();  // End timer
+    let dur: Duration = start.elapsed(); // End timer
     eprintln!("Time elapsed: {:?}", dur); // Show elapsed time to STDERR
 }
