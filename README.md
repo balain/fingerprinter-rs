@@ -99,9 +99,19 @@ Time elapsed: 4.319165708s
    18085
 ```
 
+- SHA256: Run against ~347k files in about 31.1sec
+
+```bash
+❯ cargo run --release -- --pathname ../..|wc -l
+    Finished `release` profile [optimized] target(s) in 0.02s
+     Running `target/release/fingerprinter-rs --pathname ../..`
+Time elapsed: 31.108233334s
+  347400
+```
+
 #### Xxhash
 
-Typically 3-5x faster on non-trivial runs
+Typically 2-5x faster on non-trivial runs
 
 ```bash
 ❯ cargo run --release -- --pathname ..|wc -l
@@ -111,14 +121,14 @@ Time elapsed: 844.374542ms
    18085
 ```
 
-Run against ~344k files in about 34.5sec (~10k files per second).
+- Xxhash: Run against ~347k files in about 16.8sec
 
 ```bash
 ❯ cargo run --release -- --pathname ../..|wc -l
-    Finished `release` profile [optimized] target(s) in 0.03s
+    Finished `release` profile [optimized] target(s) in 0.02s
      Running `target/release/fingerprinter-rs --pathname ../..`
-Time elapsed: 34.518055958s
-  343715
+Time elapsed: 16.772243416s
+  347400
 ```
 
 ## Features

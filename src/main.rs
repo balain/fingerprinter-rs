@@ -83,9 +83,9 @@ fn main() {
 
     // To switch from Sha256 <-> Xxhash: 4 steps - #1: define filelist
     // Sha256
-    // let filelist = Arc::new(Mutex::new(Vec::<FileRecordSha256>::new()));
+    let filelist = Arc::new(Mutex::new(Vec::<FileRecordSha256>::new()));
     // Xxhash
-    let filelist = Arc::new(Mutex::new(Vec::<FileRecordXxhash>::new()));
+    // let filelist = Arc::new(Mutex::new(Vec::<FileRecordXxhash>::new()));
 
     // List of paths (full string) to exclude
     // If any one of these items is found in the full path, that entry will be ignored/excluded
@@ -105,31 +105,31 @@ fn main() {
         let f2 = File::open(f.clone());
 
         // To switch from Sha256 <-> Xxhash: 4 steps - #2: Set res to the right output
-        // let res: Result<(&str, Output<Sha256VarCore>), bool> = match f2 { // Sha256
-        let res: Result<(&str, u64), bool> = match f2 { // xxhash
+        let res: Result<(&str, Output<Sha256VarCore>), bool> = match f2 { // Sha256
+        // let res: Result<(&str, u64), bool> = match f2 { // xxhash
             #[allow(unused_mut)]
             Ok(mut f2) => {
                 // To switch from Sha256 <-> Xxhash: 4 steps - #3: Change the implementation block
                 // Original Sha256 implementation
-                // let mut hasher = Sha256::new();
-                // let _n = io::copy(&mut &f2, &mut hasher);
-                // let hash = hasher.finalize();
-                // //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
-                // Result::Ok((
-                //     <PathBuf as AsRef<Path>>::as_ref(f)
-                //         .to_str()
-                //         .unwrap_or_default(),
-                //     hash,
-                // ))
+                let mut hasher = Sha256::new();
+                let _n = io::copy(&mut &f2, &mut hasher);
+                let hash = hasher.finalize();
+                //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
+                Result::Ok((
+                    <PathBuf as AsRef<Path>>::as_ref(f)
+                        .to_str()
+                        .unwrap_or_default(),
+                    hash,
+                ))
 
                 // New xxhash implementation
-                let mut buffer = Vec::new();
-                buffer.clear();
-                let _ = f2.read_to_end(&mut buffer);
-
-                Result::Ok((<PathBuf as AsRef<Path>>::as_ref(f)
-                                .to_str()
-                                .unwrap_or_default(),xxhash_rust::xxh3::xxh3_64(&buffer)))
+                // let mut buffer = Vec::new();
+                // buffer.clear();
+                // let _ = f2.read_to_end(&mut buffer);
+                //
+                // Result::Ok((<PathBuf as AsRef<Path>>::as_ref(f)
+                //                 .to_str()
+                //                 .unwrap_or_default(),xxhash_rust::xxh3::xxh3_64(&buffer)))
             }
             Err(ref e) => {
                 eprintln!("Error: (file: {:?}) {:?}", f, e);
@@ -140,18 +140,18 @@ fn main() {
             // Create a new struct instance and populate with filename and filehash
             // To switch from Sha256 <-> Xxhash: 4 steps - #4: Change the record hash impl
             // Sha256
-            //     let frs = FileRecordSha256 {
-            //         filename: res.unwrap().0.to_owned(),
-            //         filehash: res.unwrap().1,
-            //     };
-            //     filelist.lock().unwrap().push(frs);
+                let frs = FileRecordSha256 {
+                    filename: res.unwrap().0.to_owned(),
+                    filehash: res.unwrap().1,
+                };
+                filelist.lock().unwrap().push(frs);
 
             // Xxhash
-            let frs = FileRecordXxhash {
-                filename: res.unwrap().0.to_owned(),
-                filehash: res.unwrap().1,
-            };
-            filelist.lock().unwrap().push(frs);
+            // let frs = FileRecordXxhash {
+            //     filename: res.unwrap().0.to_owned(),
+            //     filehash: res.unwrap().1,
+            // };
+            // filelist.lock().unwrap().push(frs);
 
         }
     });
