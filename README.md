@@ -1,6 +1,6 @@
 # Fingerprinter (Rust)
 
-Take fingerprints (sha256) of files in specified folder, recursively.
+Take fingerprints (xxhash) of files in specified folder, recursively.
 
 ## Quick Start
 
@@ -19,6 +19,7 @@ $ cargo run -- --pathname .
 The things you need before installing the software:
 
 * Rust
+* xxhash_rust
 
 ### Installation
 
@@ -26,6 +27,7 @@ To run this program:
 
 ```bash
 $ git clone https://github.com/balain/fingerprinter-rs.git
+$ cargo add xxhash_rust
 ```
 
 ## Options
@@ -33,6 +35,8 @@ $ git clone https://github.com/balain/fingerprinter-rs.git
 ```bash
   --pathname PATH   Path to scan (required; no default)
 ```
+
+- Configure for Sha256 or Xxhash [Default: Xxhash]
 
 ## Usage
 
@@ -48,30 +52,63 @@ $ cargo run -- --pathname .
 
 ## Sample Output
 
+### SHA256
 ```bash
-❯ cargo run -- --pathname .
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
-     Running `target/debug/fingerprinter-rs --pathname .`
+❯ cargo run --release -- --pathname .
+    Finished `release` profile [optimized] target(s) in 0.02s
+     Running `target/release/fingerprinter-rs --pathname .`
 "./.github/workflows/release.yml" == b6725cbd0b105218316f9c73866f0ae59e680c411faaf8b1aaaf22e7f9ad7b60
 "./.github/workflows/rust.yml" == 213080e2ec9731428d65d49453c39c36d310c24056e5715ae70de743043f3b4e
-"./.gitignore" == 260e76b7571b5ab3fd4991c4fdbca3262423e628f872f621a32a64ef06f995fa
-"./Cargo.lock" == 42e9e6b8467b07d3e0c3103d59e04ee6592c826b271a489fe6526268b5938633
-"./Cargo.toml" == 32eb9657f6079da59b5b9887355753c487dd85ac4d6fbc8db47ec8f36b5e0390
-"./README.md" == 2ccd6bfcfda6cc516d5531ad523a29b27dfffb67a811304e29676d040d21c86e
-"./src/main.rs" == c29e51e8e2793a593887e7819a65becd7ca9a8c24e429f770b6a1e2de0f42d11
-Time elapsed: 1.931917ms
+"./.gitignore" == 6317d3e78e7a71916a797e058022ab540c8fc0f4373b56501dcf01c168cf0c21
+"./Cargo.lock" == e206393b943e11d95907b2d3a114af556d8a06cbaaa1c216bf28335a48759fce
+"./Cargo.toml" == cfbc3fe391da7f5de57afb800d9d68ae864a98b92a3b83991fea66f5672e89d0
+"./LICENSE.md" == 3373b2f94fe100229792b388983ae2a3a990d33308b9c23db06fafe88efde607
+"./README.md" == 3628ad01e53d3a02685f045f99d9da60b64d3182399a55fafcbd9e34afb84039
+"./acc-recordings.txt" == f14eec8d17e6b07178e91b03304e9b78cf8e051d473f6ede1b0bc6b89821d800
+"./src/main.rs" == 850097b0fdc5e0eb155cb744faff2c3d8d70c6e6bad2b7c4d4f4a976f87ac71a
+Time elapsed: 1.181708ms
+```
+
+### Xxhash
+```bash
+❯ cargo run --release -- --pathname .
+    Finished `release` profile [optimized] target(s) in 0.02s
+     Running `target/release/fingerprinter-rs --pathname .`
+"./.github/workflows/release.yml" == fa0549909fe77a4f
+"./.github/workflows/rust.yml" == a4b34512721a82d8
+"./.gitignore" == 122105a1456414a4
+"./Cargo.lock" == 71ac41962788727e
+"./Cargo.toml" == 7658b6aaab2c0055
+"./LICENSE.md" == 41f4b20423632cb3
+"./README.md" == 73b4b99518797dd7
+"./acc-recordings.txt" == 64fd56b86a83af1f
+"./src/main.rs" == 3d3356a74df556a4
+Time elapsed: 713.084µs
 ```
 
 ### Sample Runtime (on Apple Studio M1)
 
 Run against ~14.4k files in just over 3sec (~4.8k files per second).
 
+#### SHA256
 ```bash
 ❯ cargo run --release -- --pathname ..|wc -l
-    Finished `release` profile [optimized] target(s) in 0.03s
+    Finished `release` profile [optimized] target(s) in 0.02s
      Running `target/release/fingerprinter-rs --pathname ..`
-Time elapsed: 3.102094667s
-   14402
+Time elapsed: 4.319165708s
+   18085
+```
+
+#### Xxhash
+
+Typically 3-5x faster on non-trivial runs
+
+```bash
+❯ cargo run --release -- --pathname ..|wc -l
+    Finished `release` profile [optimized] target(s) in 0.10s
+     Running `target/release/fingerprinter-rs --pathname ..`
+Time elapsed: 844.374542ms
+   18085
 ```
 
 Run against ~344k files in about 34.5sec (~10k files per second).
@@ -89,14 +126,17 @@ Time elapsed: 34.518055958s
 ### Implemented
 - [x] Calculate sha256 checksums for files/folders recursively
 - [x] Multithreaded scan (using rayon)
+- [x] Switched to xxhash_rust (instead of sha256) - significant speed improvement
 
-### Future
-Optionally:
-- [ ] Implement JSON output
-- [ ] Compare with previous snapshots and report on any changes (i.e. added, changed, or deleted files).
-- [ ] Run a continuous watch, cycling every 600sec (configurable)
+### Future (in priority order)
 - [ ] Improve command line option handling with new options (clap) [following python project options (see below)]
-- [ ] Implement alternative (optional) sqlite storage
+- [ ] JSON output
+- [ ] Compare with previous snapshots and report on any changes (i.e. added, changed, or deleted files).
+- [ ] Sqlite storage
+- [ ] Watch mode with configurable period
+- [ ] Use [crossterm](https://docs.rs/crossterm/latest/crossterm/) for watch mode
+
+Optionally:
 - [ ] Optimize performance
 
 ## Other Similar or Related Projects

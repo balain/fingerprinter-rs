@@ -8,10 +8,21 @@
 
 use clap::Parser;
 use rayon::prelude::*;
+
+// Original Sha256 implementation
+#[allow(unused_imports)]
 use sha2::digest::Output;
+#[allow(unused_imports)]
 use sha2::{Digest, Sha256, Sha256VarCore};
+
+// New xxhash implementation
+#[allow(unused_imports)]
+use xxhash_rust::xxh3::xxh3_64;
+
 use std::fs::*;
 use std::io;
+#[allow(unused_imports)]
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -26,10 +37,15 @@ struct Args {
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-struct FileRecord {
+#[allow(dead_code)]
+struct FileRecordSha256 {
     filename: String,
     filehash: Output<Sha256VarCore>,
 }
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[allow(dead_code)]
+struct FileRecordXxhash { filename: String, filehash: u64 }
 
 // Originally based on https://stackoverflow.com/questions/63542762
 // The Cookbook has some good suggestions: https://rust-lang-nursery.github.io/rust-cookbook/file/dir.html
@@ -65,8 +81,11 @@ fn main() {
     let args = Args::parse();
     let pathname: String = args.pathname;
 
-    // let filelist = Arc::new(Mutex::new(Vec::<(&str, Output<Sha256VarCore>)>::new()));
-    let filelist = Arc::new(Mutex::new(Vec::<FileRecord>::new()));
+    // To switch from Sha256 <-> Xxhash: 4 steps - #1: define filelist
+    // Sha256
+    // let filelist = Arc::new(Mutex::new(Vec::<FileRecordSha256>::new()));
+    // Xxhash
+    let filelist = Arc::new(Mutex::new(Vec::<FileRecordXxhash>::new()));
 
     // List of paths (full string) to exclude
     // If any one of these items is found in the full path, that entry will be ignored/excluded
@@ -85,18 +104,32 @@ fn main() {
         // TODO: Try to speed up calculating hashes of large files
         let f2 = File::open(f.clone());
 
-        let res: Result<(&str, Output<Sha256VarCore>), bool> = match f2 {
-            Ok(f2) => {
-                let mut hasher = Sha256::new();
-                let _n = io::copy(&mut &f2, &mut hasher);
-                let hash = hasher.finalize();
-                //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
-                Result::Ok((
-                    <PathBuf as AsRef<Path>>::as_ref(f)
-                        .to_str()
-                        .unwrap_or_default(),
-                    hash,
-                ))
+        // To switch from Sha256 <-> Xxhash: 4 steps - #2: Set res to the right output
+        // let res: Result<(&str, Output<Sha256VarCore>), bool> = match f2 { // Sha256
+        let res: Result<(&str, u64), bool> = match f2 { // xxhash
+            #[allow(unused_mut)]
+            Ok(mut f2) => {
+                // To switch from Sha256 <-> Xxhash: 4 steps - #3: Change the implementation block
+                // Original Sha256 implementation
+                // let mut hasher = Sha256::new();
+                // let _n = io::copy(&mut &f2, &mut hasher);
+                // let hash = hasher.finalize();
+                // //println!("{:?}: {:x}", f, hash); // TODO: Change to JSON output
+                // Result::Ok((
+                //     <PathBuf as AsRef<Path>>::as_ref(f)
+                //         .to_str()
+                //         .unwrap_or_default(),
+                //     hash,
+                // ))
+
+                // New xxhash implementation
+                let mut buffer = Vec::new();
+                buffer.clear();
+                let _ = f2.read_to_end(&mut buffer);
+
+                Result::Ok((<PathBuf as AsRef<Path>>::as_ref(f)
+                                .to_str()
+                                .unwrap_or_default(),xxhash_rust::xxh3::xxh3_64(&buffer)))
             }
             Err(ref e) => {
                 eprintln!("Error: (file: {:?}) {:?}", f, e);
@@ -105,11 +138,21 @@ fn main() {
         };
         if res.is_ok() {
             // Create a new struct instance and populate with filename and filehash
-            let frs = FileRecord {
+            // To switch from Sha256 <-> Xxhash: 4 steps - #4: Change the record hash impl
+            // Sha256
+            //     let frs = FileRecordSha256 {
+            //         filename: res.unwrap().0.to_owned(),
+            //         filehash: res.unwrap().1,
+            //     };
+            //     filelist.lock().unwrap().push(frs);
+
+            // Xxhash
+            let frs = FileRecordXxhash {
                 filename: res.unwrap().0.to_owned(),
                 filehash: res.unwrap().1,
             };
             filelist.lock().unwrap().push(frs);
+
         }
     });
 
