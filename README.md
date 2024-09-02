@@ -34,7 +34,11 @@ $ cargo add xxhash_rust
 ## Options
 
 ```bash
-  --pathname PATH   Path to scan (required; no default)
+  -p, --path <PATH>      Path to process
+  -o, --output <OUTPUT>  [default: ./output.json]
+  -s, --save-full-path   -- not yet implemented  
+  -h, --help             Print help
+  -V, --version          Print version
 ```
 
 - Configure for Sha256 or Xxhash [Default: Xxhash]
@@ -48,16 +52,16 @@ A few examples of useful commands and/or tasks:
 Scan the current folder:
 
 ```bash
-$ cargo run -- --pathname .
+$ cargo run -- --path .
 ```
 
 ## Sample Output
 
 ### SHA256
 ```bash
-❯ cargo run --release -- --pathname .
+❯ cargo run --release -- --path .
     Finished `release` profile [optimized] target(s) in 0.02s
-     Running `target/release/fingerprinter-rs --pathname .`
+     Running `target/release/fingerprinter-rs --path .`
 "./.github/workflows/release.yml" == b6725cbd0b105218316f9c73866f0ae59e680c411faaf8b1aaaf22e7f9ad7b60
 "./.github/workflows/rust.yml" == 213080e2ec9731428d65d49453c39c36d310c24056e5715ae70de743043f3b4e
 "./.gitignore" == 6317d3e78e7a71916a797e058022ab540c8fc0f4373b56501dcf01c168cf0c21
@@ -72,9 +76,9 @@ Time elapsed: 1.181708ms
 
 ### Xxhash
 ```bash
-❯ cargo run --release -- --pathname .
+❯ cargo run --release -- --path .
     Finished `release` profile [optimized] target(s) in 0.02s
-     Running `target/release/fingerprinter-rs --pathname .`
+     Running `target/release/fingerprinter-rs --path .`
 "./.github/workflows/release.yml" == fa0549909fe77a4f
 "./.github/workflows/rust.yml" == a4b34512721a82d8
 "./.gitignore" == 122105a1456414a4
@@ -93,9 +97,9 @@ Run against ~14.4k files in just over 3sec (~4.8k files per second).
 
 #### SHA256
 ```bash
-❯ cargo run --release -- --pathname ..|wc -l
+❯ cargo run --release -- --path ..|wc -l
     Finished `release` profile [optimized] target(s) in 0.02s
-     Running `target/release/fingerprinter-rs --pathname ..`
+     Running `target/release/fingerprinter-rs --path ..`
 Time elapsed: 4.319165708s
    18085
 ```
@@ -103,9 +107,9 @@ Time elapsed: 4.319165708s
 - SHA256: Run against ~347k files in about 31.1sec
 
 ```bash
-❯ cargo run --release -- --pathname ../..|wc -l
+❯ cargo run --release -- --path ../..|wc -l
     Finished `release` profile [optimized] target(s) in 0.02s
-     Running `target/release/fingerprinter-rs --pathname ../..`
+     Running `target/release/fingerprinter-rs --path ../..`
 Time elapsed: 31.108233334s
   347400
 ```
@@ -115,9 +119,9 @@ Time elapsed: 31.108233334s
 Typically 2-5x faster on non-trivial runs
 
 ```bash
-❯ cargo run --release -- --pathname ..|wc -l
+❯ cargo run --release -- --path ..|wc -l
     Finished `release` profile [optimized] target(s) in 0.10s
-     Running `target/release/fingerprinter-rs --pathname ..`
+     Running `target/release/fingerprinter-rs --path ..`
 Time elapsed: 844.374542ms
    18085
 ```
@@ -125,9 +129,9 @@ Time elapsed: 844.374542ms
 - Xxhash: Run against ~347k files in about 16.8sec
 
 ```bash
-❯ cargo run --release -- --pathname ../..|wc -l
+❯ cargo run --release -- --path ../..|wc -l
     Finished `release` profile [optimized] target(s) in 0.02s
-     Running `target/release/fingerprinter-rs --pathname ../..`
+     Running `target/release/fingerprinter-rs --path ../..`
 Time elapsed: 16.772243416s
   347400
 ```
@@ -138,10 +142,10 @@ Time elapsed: 16.772243416s
 - [x] Calculate sha256 checksums for files/folders recursively
 - [x] Multithreaded scan (using rayon)
 - [x] Switched to xxhash_rust (instead of sha256) - significant speed improvement
+- [x] JSON output
+- [x] Improve command line option handling with new options (clap) [following python project options (see below)]
 
 ### Future (in priority order)
-- [ ] Improve command line option handling with new options (clap) [following python project options (see below)]
-- [ ] JSON output
 - [ ] Compare with previous snapshots and report on any changes (i.e. added, changed, or deleted files).
 - [ ] Sqlite storage
 - [ ] Watch mode with configurable period

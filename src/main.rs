@@ -42,7 +42,7 @@ struct Args {
     #[arg(short, long, default_value = "./output.json")]
     output: String,
     #[arg(short, long, default_value = "false")]
-    safe_full_path: bool,
+    save_full_path: bool,
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
