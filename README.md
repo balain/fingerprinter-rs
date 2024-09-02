@@ -14,12 +14,13 @@ $ cargo run -- --pathname .
 
 ## Getting Started
 
-### Prerequisites
+### Prerequisites and Dependencies
 
 The things you need before installing the software:
 
 * Rust
-* xxhash_rust
+* xxhash_rust: For hashing
+* chrono: For timestamps
 
 ### Installation
 

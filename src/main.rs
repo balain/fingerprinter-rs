@@ -19,13 +19,18 @@ use sha2::{Digest, Sha256, Sha256VarCore};
 #[allow(unused_imports)]
 use xxhash_rust::xxh3::xxh3_64;
 
+use std::env;
 use std::fs::*;
 use std::io;
+use std::io::{Read,Write};
 #[allow(unused_imports)]
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+#[allow(unused_imports)]
+use serde_json::{json, Value};
+use serde::Serialize;
 
 /// Simple path processor
 #[derive(Parser, Debug)]
@@ -33,19 +38,47 @@ use std::time::{Duration, Instant};
 struct Args {
     /// Path to process
     #[arg(short, long)]
-    pathname: String,
+    path: String,
+    #[arg(short, long, default_value = "./output.json")]
+    output: String,
+    #[arg(short, long, default_value = "false")]
+    safe_full_path: bool,
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[allow(dead_code)]
 struct FileRecordSha256 {
-    filename: String,
-    filehash: Output<Sha256VarCore>,
+    file: String,
+    hash: Output<Sha256VarCore>,
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[allow(dead_code)]
-struct FileRecordXxhash { filename: String, filehash: u64 }
+struct FileRecordXxhash {
+    file: String,
+    hash: u64
+}
+
+#[derive(Serialize)]
+struct FileRecordsTimestamps {
+    epoch: u128,
+    iso8601: String,
+}
+
+#[derive(Serialize)]
+struct PathInfo {
+    base: String,
+    cmdline: String,
+    run_from: String,
+}
+
+#[derive(Serialize)]
+struct FileRecordsXxhash {
+    updated_on: FileRecordsTimestamps,
+    path: PathInfo,
+    files: Vec<FileRecordXxhash>,
+    count: usize,
+}
 
 // Originally based on https://stackoverflow.com/questions/63542762
 // The Cookbook has some good suggestions: https://rust-lang-nursery.github.io/rust-cookbook/file/dir.html
@@ -79,7 +112,7 @@ fn main() {
 
     // Parse cli arguments
     let args = Args::parse();
-    let pathname: String = args.pathname;
+    let pathname: String = args.path.clone();
 
     // To switch from Sha256 <-> Xxhash: 4 steps - #1: define filelist
     // Sha256
@@ -91,12 +124,15 @@ fn main() {
     // If any one of these items is found in the full path, that entry will be ignored/excluded
     let exclude = vec![".idea", "target", ".git", "node_modules", "lib"];
 
+    // let cwd = Path::new(pathname.as_str());
+    // env::set_current_dir(cwd).unwrap();
+
     let path = Path::new(pathname.as_str());
     let mut files = Vec::new();
-    visit(path, &mut |e| files.push(e), exclude).unwrap();
+    visit(&path, &mut |e| files.push(e), exclude).unwrap();
     // Added Rayon to the iterator loop
     files.par_iter().for_each(|f| {
-        // Multi-threaded (uses Rayon)
+        // Multithreaded (uses Rayon)
         // Uncomment the next line if you don't want to use Rayon/multiple threads
         // files.iter().for_each(|f| {            // Single-threaded
         // https://github.com/RustCrypto/hashes/tree/master/sha2
@@ -127,12 +163,26 @@ fn main() {
                 buffer.clear();
                 let _ = f2.read_to_end(&mut buffer);
 
-                Result::Ok((<PathBuf as AsRef<Path>>::as_ref(f)
-                                .to_str()
-                                .unwrap_or_default(),xxhash_rust::xxh3::xxh3_64(&buffer)))
+                // Save full path?
+                // Working relative path
+                let filename = <PathBuf as AsRef<Path>>::as_ref(f).to_str().unwrap_or_default();
+                // Convert to absolute path
+                // let filenameref = <PathBuf as AsRef<Path>>::as_ref(f);
+                // let filename = filenameref.clone().canonicalize().unwrap().to_str().unwrap_or_default();
+                    // .clone().canonicalize().unwrap().to_str().unwrap_or_default();
+                // let fullpath = Path::new(filename.to_owned().as_str()).canonicalize().unwrap().to_str().unwrap_or_default();
+                // TODO: Fix check for save_full_path argument
+                // if args.safe_full;path {
+                    // Result::Ok((Path::new(fullpath.clone()).clone().canonicalize().unwrap().to_str().unwrap(),
+                    //     xxhash_rust::xxh3::xxh3_64(&buffer)))
+                    // Result::Ok((filename, xxhash_rust::xxh3::xxh3_64(&buffer)))
+                //
+                // } else { // Only save relative path
+                    Result::Ok((filename, xxhash_rust::xxh3::xxh3_64(&buffer)))
+                // }
             }
             Err(ref e) => {
-                eprintln!("Error: (file: {:?}) {:?}", f, e);
+                eprintln!("Error: (file: {:?}) {:?} ", f, e);
                 Result::Err(false)
             }
         };
@@ -148,11 +198,10 @@ fn main() {
 
             // Xxhash
             let frs = FileRecordXxhash {
-                filename: res.unwrap().0.to_owned(),
-                filehash: res.unwrap().1,
+                file: res.unwrap().0.to_owned(),
+                hash: res.unwrap().1,
             };
             filelist.lock().unwrap().push(frs);
-
         }
     });
 
@@ -160,10 +209,48 @@ fn main() {
     // TODO: Avoid creating a new variable to hold the list
     let mut fls2 = filelist.lock().unwrap().to_vec();
     fls2.sort(); // It just works!
-    for i2 in fls2.iter() {
-        println!("{:?} == {:x}", i2.filename, i2.filehash);
-    }
+    let path_info = PathInfo{
+        base: path.canonicalize().unwrap().to_str().unwrap().to_owned(),
+        cmdline: args.path.clone(),
+        run_from: env::current_dir().unwrap().to_str().unwrap().to_owned()
+    };
+    let file_record: FileRecordsXxhash = FileRecordsXxhash {
+        path: path_info,
+        updated_on: get_time().unwrap(),
+        count: fls2.len(),
+        files: fls2.clone()
+    };
+    let file_record_json = serde_json::to_string(&file_record).unwrap();
+    // for i2 in fls2.iter() {
+    //     println!("{:?} == {:x}", i2.filename, i2.filehash);
+    // }
+
+    File::create(args.output).unwrap().write_all(file_record_json.as_bytes()).unwrap();
 
     let dur: Duration = start.elapsed(); // End timer
     eprintln!("Time elapsed: {:?}", dur); // Show elapsed time to STDERR
+}
+
+fn get_time() -> Result<FileRecordsTimestamps, std::io::Error> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    /* std::time attempt - can't format rfc3339 :(
+       so switched to chrono
+     */
+    // let start = SystemTime::now();
+    // let since_epoch = start
+    //     .duration_since(UNIX_EPOCH)
+    //     .expect("Time went backwards");
+    // Ok(FileRecordsTimestamps {
+    //     epoch: since_epoch.as_millis(),
+    //     iso8601: start.to_rfc3339(),
+    //     // (SystemTime::duration_from_millis(since_epoch).to_rfc3339()).to_string(),
+    // })
+
+    use chrono::{Local};
+
+    Ok(FileRecordsTimestamps {
+        epoch: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis(),
+        iso8601: Local::now().to_rfc3339(),
+    })
 }
