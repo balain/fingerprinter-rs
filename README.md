@@ -9,7 +9,7 @@ Clone the repo, build the binary, and run it using all defaults. The current fol
 ```bash
 $ git clone https://github.com/balain/fingerprinter-rs.git
 $ cargo build --release
-$ cargo run -- --pathname .
+$ cargo run -- --path .
 ```
 
 ## Getting Started
