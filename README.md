@@ -2,6 +2,10 @@
 
 Take fingerprints (xxhash) of files in specified folder, recursively.
 
+Currently, takes static snapshots of the specified folder.
+
+For live monitoring, use the [Notify](https://docs.rs/notify/latest/notify/) create.
+
 ## Quick Start
 
 Clone the repo, build the binary, and run it using all defaults. The current folder will be scanned and the output report will be shown on screen:
