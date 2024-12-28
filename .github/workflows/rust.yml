@@ -1,29 +1,40 @@
 # .github/workflows/release.yml
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  release:
+    types:
+      - created
 
 jobs:
-  release:
-    name: release ${{ matrix.target }}
+  linux_windows:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-pc-windows-gnu
-            archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.5
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Install Linux and Windows Cross Compilers
+        run: sudo apt-get install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32
+
+      - name: Install rustup targets
+        run: rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu
+
+      - name: Build the executable
+        run: cargo build --release --target x86_64-unknown-linux-musl --target x86_64-pc-windows-gnu
+
+      - name: Tar x86_64 binary
+        run: tar -czvf fingerprinter-rs-gnu-linux-x86_64.tar.gz -C target/x86_64-unknown-linux-musl/release fingerprinter-rs
+
+      - name: Zip windows binary
+        run: zip -j fingerprinter-rs-windows.zip target/x86_64-pc-windows-gnu/release/fingerprinter-rs.exe
+
+      - name: Generate SHA256 checksums
+        run: |
+          shasum -a 256 fingerprinter-rs-gnu-linux-x86_64.tar.gz > fingerprinter-rs-gnu-linux-x86_64.tar.gz.sha256
+          shasum -a 256 fingerprinter-rs-windows.zip > fingerprinter-rs-windows.zip.sha256
+
+      - name: Upload release binaries
+        uses: alexellis/upload-assets@0.4.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
+          asset_paths: '["fingerprinter-rs-gnu-linux-x86_64.tar.gz", "fingerprinter-rs-windows.zip", "fingerprinter-rs-gnu-linux-x86_64.tar.gz.sha256", "fingerprinter-rs-windows.zip.sha256"]'
