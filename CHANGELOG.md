@@ -1,1 +1,3 @@
-v0.1.0: Initial preview release
+- v0.1.0: Initial preview release
+- v0.1.4: Corrected version (sync'd)
+- 
